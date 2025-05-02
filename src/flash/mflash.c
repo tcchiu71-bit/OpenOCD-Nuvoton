@@ -1392,7 +1392,7 @@ COMMAND_HANDLER(mg_bank_cmd)
 		return ERROR_FAIL;
 	}
 
-	mflash_bank = calloc(sizeof(struct mflash_bank), 1);
+	mflash_bank = calloc(1, sizeof(struct mflash_bank));
 	COMMAND_PARSE_NUMBER(u32, CMD_ARGV[1], mflash_bank->base);
 	/** @todo Verify how this parsing should work, then document it. */
 	char *str;
