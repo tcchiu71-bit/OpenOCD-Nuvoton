@@ -25,7 +25,8 @@ jobs:
       - name: Build OpenOCD
         run: |
           ./bootstrap
-          ./configure --enable-nulink
+          # 加入 --disable-werror 以跳過新版 GCC 的 dangling-pointer 警告
+          ./configure --enable-nulink --disable-werror
           make -j$(nproc)
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
