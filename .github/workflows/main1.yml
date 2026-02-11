@@ -1,0 +1,37 @@
+name: Build OpenOCD Windows EXE
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            git
+            make
+            pkg-config
+            autoconf
+            automake
+            libtool
+            mingw-w64-x86_64-libusb
+      - name: Build OpenOCD
+        run: |
+          ./bootstrap
+          # 加入 --disable-werror 以跳過新版 GCC 的 dangling-pointer 警告
+          ./configure --enable-nulink --disable-werror
+          make -j$(nproc)
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openocd-windows
+          path: |
+            src/openocd.exe
+            tcl/
