@@ -28,10 +28,20 @@ jobs:
           # 加入 --disable-werror 以跳過新版 GCC 的 dangling-pointer 警告
           ./configure --enable-nulink --disable-werror
           make -j$(nproc)
+      - name: Collect DLLs
+        run: |
+          # 從 MSYS2 系統目錄複製必要的執行元件到 src 目錄以便打包
+          cp /mingw64/bin/libusb-1.0.dll src/
+          cp /mingw64/bin/libwinpthread-1.dll src/
+          cp /mingw64/bin/zlib1.dll src/
+          # 視情況可能還需要 libgcc_s_seh-1.dll 或 libstdc++-6.dll
+          cp /mingw64/bin/libgcc_s_seh-1.dll src/ || true
+          cp /mingw64/bin/libstdc++-6.dll src/ || true
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: openocd-windows
           path: |
             src/openocd.exe
+            src/*.dll
             tcl/
