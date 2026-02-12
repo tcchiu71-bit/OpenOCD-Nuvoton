@@ -30,24 +30,42 @@ jobs:
       - name: Build OpenOCD
         run: |
           ./bootstrap
-          # 啟用 nulink 與 cmsis-dap (HID) 支援，並跳過新版 GCC 的警告錯誤
-          ./configure --enable-nulink --enable-cmsis-dap --disable-werror
+          # 顯式指定路徑確保 pkg-config 運作正常
+          export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig"
+          
+          # 配置參數：啟用 nulink 與 cmsis-dap (HID) 支援
+          ./configure \
+            --prefix=/mingw64 \
+            --enable-nulink \
+            --enable-cmsis-dap \
+            --disable-werror \
+            --enable-static \
+            --disable-shared
+          
+          # 檢查配置摘要 (請在 GitHub Actions 日誌中確認 Nuvoton 與 CMSIS-DAP 是否為 yes)
+          cat config.log | grep -E "nulink|cmsis-dap" || true
+          
           make -j$(nproc)
 
       # 收集執行時需要的所有 DLL 檔案
       - name: Collect DLLs
         run: |
-          # 複製核心執行檔與其相依的 DLL
-          cp /mingw64/bin/libusb-1.0.dll src/
-          cp /mingw64/bin/libwinpthread-1.dll src/
-          cp /mingw64/bin/zlib1.dll src/
+          # 建立產物目錄
+          mkdir -p output_bin
+          cp src/openocd.exe output_bin/
           
-          # 將 libhidapi-0.dll 複製並更名為 hidapi.dll 以供 GUI 識別
-          cp /mingw64/bin/libhidapi-0.dll src/hidapi.dll
+          # 複製核心執行相依的 DLL
+          cp /mingw64/bin/libusb-1.0.dll output_bin/
+          cp /mingw64/bin/libwinpthread-1.dll output_bin/
+          cp /mingw64/bin/zlib1.dll output_bin/
           
-          # 視環境需求可能需要的額外系統元件
-          cp /mingw64/bin/libgcc_s_seh-1.dll src/ || true
-          cp /mingw64/bin/libstdc++-6.dll src/ || true
+          # 關鍵：將 libhidapi-0.dll 複製並更名為 hidapi.dll 以供 GUI 識別
+          # 注意：有些版本可能是 libhidapi-libusb-0.dll，這裡做個兼容處理
+          cp /mingw64/bin/libhidapi-*.dll output_bin/hidapi.dll || cp /mingw64/bin/hidapi.dll output_bin/ || true
+          
+          # 額外系統元件
+          cp /mingw64/bin/libgcc_s_seh-1.dll output_bin/ || true
+          cp /mingw64/bin/libstdc++-6.dll output_bin/ || true
 
       # 上傳編譯結果作為 Artifact
       - name: Upload Artifact
@@ -55,6 +73,5 @@ jobs:
         with:
           name: openocd-windows
           path: |
-            src/openocd.exe
-            src/*.dll
+            output_bin/
             tcl/
