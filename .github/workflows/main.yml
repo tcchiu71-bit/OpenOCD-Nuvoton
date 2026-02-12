@@ -9,6 +9,8 @@ jobs:
         shell: msys2 {0}
     steps:
       - uses: actions/checkout@v4
+      
+      # 設定 MSYS2 環境並安裝所有開發工具與函式庫
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -22,21 +24,32 @@ jobs:
             automake
             libtool
             mingw-w64-x86_64-libusb
+            mingw-w64-x86_64-hidapi
+
+      # 執行編譯流程
       - name: Build OpenOCD
         run: |
           ./bootstrap
-          # 加入 --disable-werror 以跳過新版 GCC 的 dangling-pointer 警告
-          ./configure --enable-nulink --disable-werror
+          # 啟用 nulink 與 cmsis-dap (HID) 支援，並跳過新版 GCC 的警告錯誤
+          ./configure --enable-nulink --enable-cmsis-dap --disable-werror
           make -j$(nproc)
+
+      # 收集執行時需要的所有 DLL 檔案
       - name: Collect DLLs
         run: |
-          # 從 MSYS2 系統目錄複製必要的執行元件到 src 目錄以便打包
+          # 複製核心執行檔與其相依的 DLL
           cp /mingw64/bin/libusb-1.0.dll src/
           cp /mingw64/bin/libwinpthread-1.dll src/
           cp /mingw64/bin/zlib1.dll src/
-          # 視情況可能還需要 libgcc_s_seh-1.dll 或 libstdc++-6.dll
+          
+          # 將 libhidapi-0.dll 複製並更名為 hidapi.dll 以供 GUI 識別
+          cp /mingw64/bin/libhidapi-0.dll src/hidapi.dll
+          
+          # 視環境需求可能需要的額外系統元件
           cp /mingw64/bin/libgcc_s_seh-1.dll src/ || true
           cp /mingw64/bin/libstdc++-6.dll src/ || true
+
+      # 上傳編譯結果作為 Artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
